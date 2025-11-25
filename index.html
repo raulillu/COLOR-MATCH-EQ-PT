@@ -1,4 +1,3 @@
-<!-- force update -->
 <!DOCTYPE html>
 <html lang="ca">
 <head>
@@ -46,7 +45,7 @@
       font-weight: 600;
       font-size: 0.9rem;
     }
-    select, input {
+    select {
       width: 100%;
       padding: 0.4rem 0.55rem;
       border-radius: 0.35rem;
@@ -190,9 +189,10 @@
   </div>
 
   <script>
-    const CSV_FILE = "colors_recipes_rgb.csv";  // CSV amb R,G,B
+    const CSV_FILE = "colors_recipes_rgb.csv";  // ha d'existir al repo
     let rows = [];
 
+    // Parser molt simple de CSV (sense comes dins dels camps)
     function parseCSV(text) {
       const lines = text.trim().split(/\r?\n/);
       const headers = lines[0].split(",");
@@ -209,10 +209,118 @@
     function loadData() {
       const status = document.getElementById("status");
       status.textContent = "Carregant dades...";
+      console.log("Iniciant càrrega del CSV:", CSV_FILE);
+
       fetch(CSV_FILE)
         .then(r => {
-          if (!r.ok) throw new Error("No s'ha pogut carregar el CSV");
+          if (!r.ok) {
+            throw new Error("No s'ha pogut carregar el CSV: " + r.status);
+          }
           return r.text();
         })
-        .t
+        .then(text => {
+          rows = parseCSV(text);
+          console.log("Files carregades:", rows.length);
+          status.textContent = `Base carregada: ${rows.length} fórmules.`;
+          populateFilters();
+          populateColorOptions();
+        })
+        .catch(err => {
+          console.error("Error carregant CSV:", err);
+          status.textContent = "Error carregant el CSV.";
+        });
+    }
+
+    function populateFilters() {
+      const productSelect = document.getElementById("product-select");
+      const cardSelect = document.getElementById("card-select");
+
+      const products = Array.from(new Set(rows.map(r => r.product).filter(Boolean))).sort();
+      const cards = Array.from(new Set(rows.map(r => r.card).filter(Boolean))).sort();
+
+      products.forEach(p => {
+        const opt = document.createElement("option");
+        opt.value = p;
+        opt.textContent = p;
+        productSelect.appendChild(opt);
+      });
+
+      cards.forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = c;
+        opt.textContent = c;
+        cardSelect.appendChild(opt);
+      });
+
+      productSelect.addEventListener("change", populateColorOptions);
+      cardSelect.addEventListener("change", populateColorOptions);
+    }
+
+    function populateColorOptions() {
+      const product = document.getElementById("product-select").value.trim();
+      const card = document.getElementById("card-select").value.trim();
+      const colorSelect = document.getElementById("color-select");
+
+      let filtered = rows;
+      if (product) {
+        filtered = filtered.filter(r => r.product === product);
+      }
+      if (card) {
+        filtered = filtered.filter(r => r.card === card);
+      }
+
+      const colorSet = new Set();
+      const options = [];
+
+      filtered.forEach(r => {
+        const code = String(r.color_code || "").trim();
+        if (!code) return;
+        const key = code.toLowerCase();
+        if (!colorSet.has(key)) {
+          colorSet.add(key);
+          const label = (r.card ? r.card + " " : "") + code;
+          options.push({ value: code, label });
+        }
+      });
+
+      options.sort((a, b) => a.label.localeCompare(b.label));
+
+      colorSelect.innerHTML = "";
+      const opt0 = document.createElement("option");
+      opt0.value = "";
+      opt0.textContent = "— Tots —";
+      colorSelect.appendChild(opt0);
+
+      options.forEach(o => {
+        const opt = document.createElement("option");
+        opt.value = o.value;
+        opt.textContent = o.label;
+        colorSelect.appendChild(opt);
+      });
+    }
+
+    function updateColorPreview(r, g, b, labelText) {
+      const box = document.getElementById("color-box");
+      const text = document.getElementById("color-text");
+
+      if (r === "" || g === "" || b === "" || isNaN(r) || isNaN(g) || isNaN(b)) {
+        box.style.backgroundColor = "#f9fafb";
+        text.textContent = "Sense dades RGB per aquest color.";
+        return;
+      }
+
+      const rgbString = `rgb(${r}, ${g}, ${b})`;
+      box.style.backgroundColor = rgbString;
+      text.textContent = `${labelText} · ${rgbString}`;
+    }
+
+    function searchRecipe() {
+      const product = document.getElementById("product-select").value.trim();
+      const card = document.getElementById("card-select").value.trim();
+      const colorCode = document.getElementById("color-select").value.trim().toLowerCase();
+
+      let filtered = rows;
+
+      if (product) {
+        filtered = filtered.filt
 
