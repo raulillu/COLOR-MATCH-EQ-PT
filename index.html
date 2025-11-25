@@ -2,17 +2,35 @@
 <html lang="ca">
 <head>
   <meta charset="UTF-8" />
-  <title>Receptes de color - Laboratori</title>
+  <title>Receptes de color - Euroquímica</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       margin: 0;
       padding: 1.5rem;
-      background: #f5f5f5;
+      background: #f3f4f6;
     }
-    h1 {
-      margin-bottom: 0.5rem;
+    header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    header img {
+      height: 48px;
+    }
+    header .title-block {
+      display: flex;
+      flex-direction: column;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.4rem;
+    }
+    header span {
+      font-size: 0.9rem;
+      color: #6b7280;
     }
     .card {
       background: #ffffff;
@@ -25,22 +43,26 @@
       display: block;
       margin-top: 0.75rem;
       font-weight: 600;
+      font-size: 0.9rem;
     }
     select, input {
       width: 100%;
-      padding: 0.35rem 0.5rem;
+      padding: 0.4rem 0.55rem;
       border-radius: 0.35rem;
-      border: 1px solid #ccc;
+      border: 1px solid #d1d5db;
       margin-top: 0.25rem;
       box-sizing: border-box;
+      font-size: 0.9rem;
+      background-color: #f9fafb;
     }
     button {
       margin-top: 1rem;
-      padding: 0.5rem 1rem;
+      padding: 0.55rem 1.1rem;
       border-radius: 0.5rem;
       border: none;
       cursor: pointer;
       font-weight: 600;
+      font-size: 0.9rem;
     }
     button#search-btn {
       background: #2563eb;
@@ -74,19 +96,59 @@
       color: #6b7280;
       font-size: 0.85rem;
     }
-    @media (min-width: 768px) {
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
+      gap: 1rem;
+      align-items: flex-start;
+    }
+    @media (max-width: 767px) {
       .layout {
-        display: grid;
-        grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
-        gap: 1rem;
+        grid-template-columns: minmax(0, 1fr);
+      }
+      header {
+        flex-direction: column;
         align-items: flex-start;
       }
+    }
+    .color-preview-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 0.75rem;
+    }
+    .color-box {
+      width: 80px;
+      height: 80px;
+      border-radius: 0.75rem;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.6);
+    }
+    .color-info {
+      font-size: 0.85rem;
+      color: #4b5563;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.1rem 0.4rem;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-left: 0.25rem;
     }
   </style>
 </head>
 <body>
-  <h1>Receptes de color</h1>
-  <p class="muted">Tria el producte i el codi de color per veure la fórmula de laboratori.</p>
+  <header>
+    <img src="Euroquimica.png" alt="Euroquímica logo" />
+    <div class="title-block">
+      <h1>Receptes de color</h1>
+      <span>Consulta interna · Euroquímica Protective &amp; Building Coatings</span>
+    </div>
+  </header>
 
   <div class="layout">
     <div class="card">
@@ -95,18 +157,28 @@
         <option value="">— Tots —</option>
       </select>
 
-      <label for="card-select">Carta (RAL / NCS / ...)</label>
+      <label for="card-select">Carta</label>
       <select id="card-select">
         <option value="">— Totes —</option>
       </select>
 
-      <label for="color-input">Codi de color</label>
-      <input id="color-input" type="text" placeholder="Ex.: 1001, S 2010 B, S 5030 Y50R..." />
+      <label for="color-select">Color</label>
+      <select id="color-select">
+        <option value="">— Tots —</option>
+      </select>
 
       <button id="search-btn">Buscar recepta</button>
       <button id="clear-btn" type="button">Netejar</button>
 
       <p id="status" class="muted"></p>
+
+      <div class="color-preview-wrapper">
+        <div id="color-box" class="color-box"></div>
+        <div class="color-info">
+          <div><strong>Vista prèvia color</strong> <span class="badge">RGB</span></div>
+          <div id="color-text" class="muted">Sense color seleccionat.</div>
+        </div>
+      </div>
     </div>
 
     <div class="card">
@@ -117,10 +189,9 @@
   </div>
 
   <script>
-    const CSV_FILE = "colors_recipes.csv";  // mateix directori que index.html
+    const CSV_FILE = "colors_recipes_rgb.csv";  // CSV amb R,G,B
     let rows = [];
 
-    // Parser CSV molt simple (assumeix comes, sense comes dins de camps)
     function parseCSV(text) {
       const lines = text.trim().split(/\r?\n/);
       const headers = lines[0].split(",");
@@ -142,133 +213,4 @@
           if (!r.ok) throw new Error("No s'ha pogut carregar el CSV");
           return r.text();
         })
-        .then(text => {
-          rows = parseCSV(text);
-          status.textContent = `Base carregada: ${rows.length} fórmules.`;
-          populateFilters();
-        })
-        .catch(err => {
-          console.error(err);
-          status.textContent = "Error carregant el CSV.";
-        });
-    }
-
-    function populateFilters() {
-      const productSelect = document.getElementById("product-select");
-      const cardSelect = document.getElementById("card-select");
-
-      const products = Array.from(new Set(rows.map(r => r.product).filter(Boolean))).sort();
-      const cards = Array.from(new Set(rows.map(r => r.card).filter(Boolean))).sort();
-
-      products.forEach(p => {
-        const opt = document.createElement("option");
-        opt.value = p;
-        opt.textContent = p;
-        productSelect.appendChild(opt);
-      });
-
-      cards.forEach(c => {
-        const opt = document.createElement("option");
-        opt.value = c;
-        opt.textContent = c;
-        cardSelect.appendChild(opt);
-      });
-    }
-
-    function searchRecipe() {
-      const product = document.getElementById("product-select").value.trim();
-      const card = document.getElementById("card-select").value.trim();
-      const colorCodeInput = document.getElementById("color-input").value.trim().toLowerCase();
-
-      let filtered = rows;
-
-      if (product) {
-        filtered = filtered.filter(r => r.product === product);
-      }
-
-      if (card) {
-        filtered = filtered.filter(r => r.card === card);
-      }
-
-      if (colorCodeInput) {
-        filtered = filtered.filter(r =>
-          (r.color_code || "").toLowerCase() === colorCodeInput ||
-          (r.full_name || "").toLowerCase().includes(colorCodeInput)
-        );
-      }
-
-      if (filtered.length === 0) {
-        document.getElementById("result").innerHTML =
-          "<p class='muted'>No s'ha trobat cap recepta amb aquests criteris.</p>";
-        return;
-      }
-
-      // Si n'hi ha més d'una, agafem la primera (es pot adaptar)
-      const r = filtered[0];
-      const components = [];
-
-      // Base
-      if (r.base_name && Number(r.base_qty) !== 0) {
-        components.push({
-          type: "Base",
-          name: r.base_name,
-          qty: Number(r.base_qty)
-        });
-      }
-
-      // Colorants
-      for (let i = 1; i <= 6; i++) {
-        const name = r[`colorant_${i}_name`];
-        const qty = Number(r[`colorant_${i}_qty`]);
-        if (name && qty && qty !== 0) {
-          components.push({
-            type: "Colorant",
-            name: name,
-            qty: qty
-          });
-        }
-      }
-
-      const html = `
-        <h2>${r.full_name || (r.product + " " + r.card + " " + r.color_code)}</h2>
-        <p class="muted">
-          Producte: <strong>${r.product || "-"}</strong> · Carta: <strong>${r.card || "-"}</strong> · Codi: <strong>${r.color_code || "-"}</strong>
-        </p>
-        <table>
-          <thead>
-            <tr>
-              <th>Tipus</th>
-              <th>Component</th>
-              <th>Quantitat (unitat fórmula)</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${components.map(c => `
-              <tr>
-                <td>${c.type}</td>
-                <td>${c.name}</td>
-                <td>${c.qty}</td>
-              </tr>
-            `).join("")}
-          </tbody>
-        </table>
-      `;
-
-      document.getElementById("result").innerHTML = html;
-    }
-
-    function clearFilters() {
-      document.getElementById("product-select").value = "";
-      document.getElementById("card-select").value = "";
-      document.getElementById("color-input").value = "";
-      document.getElementById("result").innerHTML =
-        "<p class='muted'>Cap recepta seleccionada.</p>";
-    }
-
-    document.getElementById("search-btn").addEventListener("click", searchRecipe);
-    document.getElementById("clear-btn").addEventListener("click", clearFilters);
-
-    window.addEventListener("DOMContentLoaded", loadData);
-  </script>
-</body>
-</html>
+        .t
